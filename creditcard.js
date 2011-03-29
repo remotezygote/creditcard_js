@@ -33,6 +33,8 @@
 // Also, CreditCard.isVisa(string) -> true/false (works for all cards given in CARDS)
 //
 // Be sure to adapt the CARDS array to the credit cards you accept.
+//
+// Made prototype-free by John Bragg @ Seabright Studios
 
 var CreditCard = {
   CARDS: {
@@ -42,36 +44,51 @@ var CreditCard = {
     Amex: /^3[47][0-9]{13}$/,
     Discover: /^6(?:011|5[0-9]{2})[0-9]{12}$/
   },
-  TEST_NUMBERS: $w('378282246310005 371449635398431 378734493671000 '+
+  TEST_NUMBERS: ('378282246310005 371449635398431 378734493671000 '+
     '30569309025904 38520000023237 6011111111111117 '+
     '6011000990139424 5555555555554444 5105105105105100 '+
     '4111111111111111 4012888888881881 4222222222222'
-  ),
+  ).split(" "),
   validate: function(number){
-    return CreditCard.verifyLuhn10(number)
-      && !!CreditCard.type(number)
-      && !CreditCard.isTestNumber(number);
+    return CreditCard.verifyLuhn10(number) && !!CreditCard.type(number) && !CreditCard.isTestNumber(number);
   },
   verifyLuhn10: function(number){
-    return ($A(CreditCard.strip(number)).reverse().inject(0,function(a,n,index){
-      return a + $A((parseInt(n) * [1,2][index%2]).toString())
-        .inject(0, function(b,o){ return b + parseInt(o) }) }) % 10 == 0);
+		var cc = CreditCard.strip(number), sum = 0, end = cc.length-1;
+		for (i = end; i > -1; i--) {
+	    var c = parseInt(cc.charAt(i), 10);
+	    if ((end - i) % 2 != 0) c *= 2;
+			c = c.toString();
+			for(var l=0;l<c.length;l++) {
+				sum += parseInt(c[l],10);
+			};
+	  };
+		return(sum % 10 == 0);
   },
   isTestNumber: function(number){
-    return CreditCard.TEST_NUMBERS.include(CreditCard.strip(number));
+    return(CreditCard.TEST_NUMBERS.indexOf(CreditCard.strip(number))!=-1);
   },
   strip: function(number) {
-    return number.gsub(/\s/,'');
+    return number.replace(/\s+/g,"");
   },
   type: function(number) {
-    for(card in CreditCard.CARDS)
+    for(var card in CreditCard.CARDS) {
       if(CreditCard['is'+card](number)) return card;
-  }
+		};
+		return(undefined);
+  },
+	bindType: function(card) {
+	  var _function = CreditCard.checkType;
+	  return function() {
+	    return _function.apply(card, arguments);
+	  };
+	},
+	checkType: function(number) {
+  	return CreditCard.CARDS[this].test(CreditCard.strip(number));
+	}
 };
 
 (function(){
-  for(var card in CreditCard.CARDS)
-    CreditCard['is'+card] = function(card, number){
-      return CreditCard.CARDS[card].test(CreditCard.strip(number));
-    }.curry(card);
+  for(var card in CreditCard.CARDS) {
+		CreditCard["is"+card] = CreditCard.bindType(card);
+	};
 })();
